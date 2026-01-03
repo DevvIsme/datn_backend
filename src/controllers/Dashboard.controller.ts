@@ -7,8 +7,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
     // 1. Xử lý logic thời gian
     let dateCondition = "";
-    // Mặc định lấy tất cả, nếu có range thì nối thêm chuỗi SQL
-    // Lưu ý: Cách này an toàn vì chúng ta fix cứng chuỗi trong switch-case, không nối trực tiếp input của user.
     switch (range) {
       case "7d":
         dateCondition = "AND createdAt >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
@@ -20,15 +18,11 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         dateCondition = "AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 YEAR)";
         break;
       default:
-        dateCondition = ""; // Mặc định là 'all' (Tất cả thời gian)
+        dateCondition = "";
         break;
     }
 
-    // Helper để thay thế 'AND' bằng 'WHERE' nếu câu query chưa có WHERE
-    // Nhưng để đơn giản, trong các query dưới tôi sẽ dùng thủ thuật "WHERE 1=1" để luôn có thể nối "AND..."
-
-    // 2. Query Summary (Tổng quan)
-    // Lưu ý: payment dùng 'updatedAt' hoặc 'createdAt' tùy vào lúc thanh toán thành công. Ở đây dùng createdAt.
+    // 2. Query Summary (Query này OK, giữ nguyên)
     const [summaryData]: any = await db.query(`
       SELECT 
         (SELECT COUNT(*) FROM student WHERE status = 1 ${dateCondition}) as totalStudents,
@@ -36,7 +30,8 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         (SELECT COALESCE(SUM(amount), 0) FROM payment WHERE status = 'success' ${dateCondition}) as totalRevenue
     `);
 
-    // 3. Query Phân bổ học viên (Pie Chart)
+    // 3. Query Phân bổ học viên (SỬA LỖI GROUP BY)
+    // Thêm c.name vào GROUP BY
     const [courseDistribution]: any = await db.query(`
       SELECT 
         c.id, 
@@ -44,13 +39,10 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         COUNT(cs.student_id) as students
       FROM course c
       LEFT JOIN course_subcribe cs ON c.id = cs.course_id
-      WHERE 1=1 ${dateCondition.replace("createdAt", "cs.createdAt")} 
-      GROUP BY c.id
+      WHERE 1=1 ${dateCondition.replace(/createdAt/g, "cs.createdAt")} 
+      GROUP BY c.id, c.name  
       HAVING students > 0
     `);
-    // Note: dateCondition ở trên dùng tên cột mặc định là createdAt,
-    // nhưng trong bảng course_subcribe cần chỉ rõ là cs.createdAt để tránh lỗi ambiguous nếu join.
-    // Ở đoạn replace trên tôi xử lý nhanh, hoặc bạn có thể viết switch case riêng cho từng query nếu muốn chặt chẽ.
 
     const totalStudentsInCourses = courseDistribution.reduce(
       (acc: number, cur: any) => acc + cur.students,
@@ -63,10 +55,10 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         : 0,
     }));
 
-    // 4. Query Timeline (Biểu đồ cột)
-    // Nếu chọn 7 ngày thì hiển thị theo Ngày (%d/%m), còn lại hiển thị theo Tháng (%m/%Y)
+    // 4. Query Timeline (SỬA LỖI ORDER BY)
     const dateFormat = range === "7d" ? "%d/%m" : "%m/%Y";
 
+    // Thay đổi: ORDER BY MIN(createdAt) để lấy thời gian đại diện đầu tiên của nhóm
     const [registrationTimeline]: any = await db.query(`
       SELECT 
         DATE_FORMAT(createdAt, '${dateFormat}') as time,
@@ -74,10 +66,10 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       FROM student
       WHERE 1=1 ${dateCondition}
       GROUP BY time
-      ORDER BY createdAt ASC
+      ORDER BY MIN(createdAt) ASC 
     `);
 
-    // 5. Query Tiến độ & Top Doanh thu
+    // 5. Query Doanh thu (SỬA LỖI GROUP BY)
     const [revenueByCourse]: any = await db.query(`
       SELECT 
         c.name,
@@ -85,23 +77,23 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       FROM course c
       JOIN payment p ON c.id = p.course_id
       WHERE p.status = 'success' ${dateCondition.replace(
-        "createdAt",
+        /createdAt/g,
         "p.createdAt"
       )}
-      GROUP BY c.id
+      GROUP BY c.id, c.name
       ORDER BY total DESC
       LIMIT 5
     `);
 
-    // Tiến độ học tập (Lấy top 5 khóa có người học gần đây nhất)
+    // 6. Query Tiến độ (SỬA LỖI GROUP BY)
     const [learningProgress]: any = await db.query(`
         SELECT 
           c.name,
           AVG(cs.process) as progress
         FROM course c
         JOIN course_subcribe cs ON c.id = cs.course_id
-        WHERE 1=1 ${dateCondition.replace("createdAt", "cs.createdAt")}
-        GROUP BY c.id
+        WHERE 1=1 ${dateCondition.replace(/createdAt/g, "cs.createdAt")}
+        GROUP BY c.id, c.name
         LIMIT 5
       `);
 
@@ -116,7 +108,8 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    // Log lỗi chi tiết ra console server để debug nếu vẫn lỗi
+    console.error("Dashboard Stats Error:", error);
     return res.status(500).json({ message: "Lỗi server khi lấy thống kê" });
   }
 };
