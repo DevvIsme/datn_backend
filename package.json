@@ -43,7 +43,7 @@
     "typescript": "^5.5.4"
   },
   "scripts": {
-    "start": "nodemon src/server.ts"
+    "start": "node src/server.ts"
   },
   "author": "DucToan",
   "license": "ISC"
