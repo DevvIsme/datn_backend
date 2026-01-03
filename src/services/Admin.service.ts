@@ -1,4 +1,4 @@
-import Admin from "../models/Admin.model";
+import Admin from "../models/Admin.Model";
 
 export const coursePermission = async (id: number) => {
   const admin = await Admin.findByPk(id);

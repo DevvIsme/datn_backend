@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Student from "../models/Student.Model";
-import Admin from "../models/Admin.model";
+import Admin from "../models/Admin.Model";
 import { bcryptDecrypt } from "../helpers/bcryptHash";
 import { bcryptEncrypt } from "../helpers/bcryptHash";
 import { tokenGenerate, tokenVerify } from "../helpers/tokenHandle";
