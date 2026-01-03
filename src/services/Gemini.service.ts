@@ -123,7 +123,7 @@ export const AnalyzeExamImage = async (base64Image: string) => {
         `;
 
     const response = await genAI.models.generateContent({
-      model: "gemma-3-12b-it", 
+      model: "gemma-3-4b-it", 
       contents: [
         {
           role: "user",
