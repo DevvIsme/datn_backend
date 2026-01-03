@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",             // Quan trọng cho Node.js
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,          // <--- DÒNG NÀY SẼ SỬA LỖI CỦA BẠN
+    "allowSyntheticDefaultImports": true, // Hỗ trợ thêm cho dòng trên
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true              // Bỏ qua check lỗi trong folder node_modules
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}
