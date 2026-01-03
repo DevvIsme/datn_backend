@@ -3,7 +3,7 @@ import { decryptString, encryptString } from "../helpers/cryptHash";
 import { sendResetEmail } from "../helpers/sendingEmail";
 import { bcryptDecrypt, bcryptEncrypt } from "../helpers/bcryptHash";
 import { Op } from "sequelize";
-import Admin from "../models/Admin.model";
+import Admin from "../models/Admin.Model";
 
 let ResetPasswordlist: string[] = [];
 
