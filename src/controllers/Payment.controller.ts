@@ -31,7 +31,7 @@ export const CreatePaymentUrl = async (req: Request, res: Response) => {
 
     // 2. Chuẩn bị dữ liệu JSON (item & embed_data phải là chuỗi JSON)
     const embed_data = {
-      redirecturl: `http://localhost:5173/thanh-toan-thanh-cong?slug=${course.slug}`,
+      redirecturl: `https://datn-frontend-hocvien.vercel.app/thanh-toan-thanh-cong?slug=${course.slug}`,
     };
 
     const items = [
