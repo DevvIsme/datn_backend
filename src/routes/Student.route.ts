@@ -25,7 +25,12 @@ router.put(
 router.delete("/delete/:student_id", verifyCanStudent, Student.DeleteStudent);
 
 router.get("/my_info", verifyStudent, Student.MyInfo);
-router.put("/my_info/update/", verifyStudent, Student.UpdateMyAcc);
+router.put(
+  "/my_info/update/",
+  verifyStudent,
+  Student.UpdateMyAcc,
+  uploadCloud.single("avatar")
+);
 router.put("/my_info/change_password/", verifyStudent, Student.ChangePassword);
 router.put("/update/:student_id", verifyAdmin, Student.UpdateStudent);
 router.put(
