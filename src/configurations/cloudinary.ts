@@ -49,7 +49,7 @@ const storage = new CloudinaryStorage({
     return {
       folder: folderName,
       resource_type: resourceType,
-      public_id: `${resourceType}_${Date.now()}`,
+      public_id: publicId,
     };
   },
 });
