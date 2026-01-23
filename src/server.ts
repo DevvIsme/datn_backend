@@ -34,6 +34,27 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(responseFormatter);
 routes(app);
 
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("====================================");
+    console.error("🔥 LỖI SERVER (GLOBAL CATCH):");
+    console.error("Message:", err.message);
+    console.error("Stack:", err.stack);
+    console.error("====================================");
+
+    res.status(500).json({
+      status: false,
+      message: "Lỗi hệ thống (Check Server Logs)",
+      error: err.message, // Trả message lỗi về frontend để bạn đọc được ngay
+    });
+  }
+);
+
 const startServer = async () => {
   try {
     await authenticateDatabase();
