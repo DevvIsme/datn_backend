@@ -162,30 +162,24 @@ export const MyInfo = async (req: Request, res: Response) => {
 
 export const UpdateMyAcc = async (req: Request, res: Response) => {
   try {
-    // 1. Lấy user từ token (đã qua middleware auth)
     const user = (req as any).user;
-    if (!user || !user.id) {
-      return res
-        .status(401)
-        .json({ message: "Không xác thực được người dùng!" });
-    }
-
+    // 1. Tìm sinh viên
     const student = await Student.findByPk(parseInt(user.id));
     if (!student) {
-      return res.status(404).json({ message: "Không tìm thấy sinh viên!" });
+      return res
+        .status(500)
+        .json({ message: "Không tìm thấy thông tin sinh viên!" });
     }
 
     // 2. Lấy dữ liệu từ form
     const { email, fullName, phone, gender, birthday } = req.body;
 
-    // 3. Xử lý Avatar
-    // Nếu có file upload lên Cloudinary -> req.file.path sẽ là URL ảnh (https://res.cloudinary...)
+    // 3. Xử lý Avatar (Logic Cloudinary)
+    // Nếu có file upload -> req.file.path là link ảnh online (https://res.cloudinary...)
     // Nếu không có file -> Giữ nguyên ảnh cũ (student.avatar)
-    let avatarUrl = student.avatar;
-
-    if (req.file) {
-      console.log("📸 Đã upload avatar mới:", req.file.path);
-      avatarUrl = req.file.path;
+    let newAvatar = student.avatar;
+    if (req.file && req.file.path) {
+      newAvatar = req.file.path; // Lấy link Cloudinary
     }
 
     // 4. Update vào Database
@@ -195,16 +189,13 @@ export const UpdateMyAcc = async (req: Request, res: Response) => {
       phone,
       gender,
       birthday,
-      avatar: avatarUrl, // Lưu URL Cloudinary vào DB
+      avatar: newAvatar, // Lưu link mới vào DB
     });
 
-    return res.json({
-      message: "Cập nhật thông tin thành công!",
-      data: student,
-    });
+    return res.json({ message: "Cập nhật thông tin thành công!" });
   } catch (error: any) {
     console.error("Lỗi UpdateMyAcc:", error);
-    return res.status(500).json({ message: error.message || "Lỗi Server" });
+    return res.status(500).json({ message: error.message });
   }
 };
 
