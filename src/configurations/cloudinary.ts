@@ -40,6 +40,7 @@ const storage = new CloudinaryStorage({
     if (file.mimetype.startsWith("video")) {
       resourceType = "video";
       folderName = "datn_courses/videos";
+      publicId = `video_${Date.now()}`;
     } else if (file.mimetype === "application/pdf") {
       resourceType = "raw";
       folderName = "datn_courses/documents";
