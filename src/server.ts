@@ -25,7 +25,7 @@ app.use("/files", express.static(path.join(__dirname, "../uploads/lessons")));
 app.use(  "/violations",
   express.static(path.join(__dirname, "../uploads/violations"))
 );
-app.use("/upload", uploadRouter);
+app.use("/api/upload", uploadRouter);
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
