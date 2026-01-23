@@ -159,40 +159,42 @@ export const MyInfo = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const UpdateMyAcc = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+
     // 1. Tìm sinh viên
     const student = await Student.findByPk(parseInt(user.id));
     if (!student) {
-      return res
-        .status(500)
-        .json({ message: "Không tìm thấy thông tin sinh viên!" });
+      return res.status(404).json({ message: "Không tìm thấy sinh viên!" });
     }
 
-    // 2. Lấy dữ liệu từ form
+    // 2. Lấy thông tin từ form
     const { email, fullName, phone, gender, birthday } = req.body;
 
     // 3. Xử lý Avatar (Logic Cloudinary)
-    // Nếu có file upload -> req.file.path là link ảnh online (https://res.cloudinary...)
-    // Nếu không có file -> Giữ nguyên ảnh cũ (student.avatar)
-    let newAvatar = student.avatar;
+    let newAvatar = student.avatar; // Mặc định giữ ảnh cũ
+
+    // Nếu Router ở Bước 1 chạy đúng, Cloudinary sẽ trả link về trong req.file.path
     if (req.file && req.file.path) {
-      newAvatar = req.file.path; // Lấy link Cloudinary
+      console.log("📸 Link ảnh Cloudinary:", req.file.path);
+      newAvatar = req.file.path; // Lưu link này: https://res.cloudinary.com/...
     }
 
-    // 4. Update vào Database
+    // 4. Lưu vào Database
     await student.update({
       email,
       fullName,
       phone,
       gender,
       birthday,
-      avatar: newAvatar, // Lưu link mới vào DB
+      avatar: newAvatar, // Cập nhật cột avatar
     });
 
-    return res.json({ message: "Cập nhật thông tin thành công!" });
+    return res.json({
+      message: "Cập nhật thông tin thành công!",
+      data: student,
+    });
   } catch (error: any) {
     console.error("Lỗi UpdateMyAcc:", error);
     return res.status(500).json({ message: error.message });
