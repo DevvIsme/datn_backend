@@ -5,6 +5,7 @@ import {
   verifyStudent,
   verifyAdmin,
 } from "../middlewares/authentication";
+import { uploadCloud } from "../configurations/cloudinary";
 
 const router: Router = express.Router();
 
@@ -27,5 +28,11 @@ router.get("/my_info", verifyStudent, Student.MyInfo);
 router.put("/my_info/update/", verifyStudent, Student.UpdateMyAcc);
 router.put("/my_info/change_password/", verifyStudent, Student.ChangePassword);
 router.put("/update/:student_id", verifyAdmin, Student.UpdateStudent);
+router.put(
+  "/my_info/update",
+  verifyStudent, // Xác thực user trước
+  uploadCloud.single("avatar"), // Upload ảnh lên Cloudinary
+  Student.UpdateMyAcc // Sau đó mới chạy vào controller xử lý DB
+);
 
 export default router;

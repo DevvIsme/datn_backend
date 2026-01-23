@@ -161,49 +161,51 @@ export const MyInfo = async (req: Request, res: Response) => {
 };
 
 export const UpdateMyAcc = async (req: Request, res: Response) => {
-  avatarUpload.single("avatar")(req, res, async (err: any) => {
-    if (err) {
-      const statusCode = err instanceof multer.MulterError ? 400 : 500;
-      return res.status(statusCode).json({ message: err.message });
-    }
-
+  try {
+    // 1. Lấy user từ token (đã qua middleware auth)
     const user = (req as any).user;
+    if (!user || !user.id) {
+      return res
+        .status(401)
+        .json({ message: "Không xác thực được người dùng!" });
+    }
+
     const student = await Student.findByPk(parseInt(user.id));
-
     if (!student) {
-      return res.status(500).json({ message: "Server đang bị lỗi!" });
+      return res.status(404).json({ message: "Không tìm thấy sinh viên!" });
     }
-    const oldAvatarPath = path.join(
-      __dirname,
-      "../../public/avatars",
-      student.avatar
-    );
-    const newAvatar = req.file?.filename || student.avatar;
 
-    try {
-      const { email, fullName, phone, gender, birthday } = req.body;
+    // 2. Lấy dữ liệu từ form
+    const { email, fullName, phone, gender, birthday } = req.body;
 
-      await student.update({
-        email,
-        fullName,
-        phone,
-        gender,
-        birthday, // Sequelize thường tự handle string 'YYYY-MM-DD' thành Date
-        avatar: newAvatar,
-      });
+    // 3. Xử lý Avatar
+    // Nếu có file upload lên Cloudinary -> req.file.path sẽ là URL ảnh (https://res.cloudinary...)
+    // Nếu không có file -> Giữ nguyên ảnh cũ (student.avatar)
+    let avatarUrl = student.avatar;
 
-      if (req.file?.filename) {
-        try {
-await fs.access(oldAvatarPath); 
-          await fs.unlink(oldAvatarPath);        } catch (error: any) {
-          console.error("Failed to delete old avatar:", error.message);
-        }
-      }
-      return res.json({ message: "Cập nhật thông tin thành công!" });
-    } catch (error: any) {
-      return res.status(500).json({ message: error.message });
+    if (req.file) {
+      console.log("📸 Đã upload avatar mới:", req.file.path);
+      avatarUrl = req.file.path;
     }
-  });
+
+    // 4. Update vào Database
+    await student.update({
+      email,
+      fullName,
+      phone,
+      gender,
+      birthday,
+      avatar: avatarUrl, // Lưu URL Cloudinary vào DB
+    });
+
+    return res.json({
+      message: "Cập nhật thông tin thành công!",
+      data: student,
+    });
+  } catch (error: any) {
+    console.error("Lỗi UpdateMyAcc:", error);
+    return res.status(500).json({ message: error.message || "Lỗi Server" });
+  }
 };
 
 export const ChangePassword = async (req: Request, res: Response) => {
