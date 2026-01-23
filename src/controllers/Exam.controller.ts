@@ -410,12 +410,12 @@ export const DetailResultExam = async (req: Request, res: Response) => {
     return res.status(500).json(error.message);
   }
 };
-
 export const DetailExam = async (req: Request, res: Response) => {
-  // ... (Code giữ nguyên như cũ)
   try {
-    const slug = req.params.slug;
-    const exam = await Exam.findOne({
+    const { id } = req.params; // Lấy ID từ URL thay vì slug
+
+    const exam = await Exam.findByPk(id, {
+      // Dùng findByPk để tìm theo ID
       attributes: [
         "id",
         "name",
@@ -434,7 +434,6 @@ export const DetailExam = async (req: Request, res: Response) => {
         "end_date",
         "is_ai_proctoring",
       ],
-      where: { slug },
       include: [
         {
           model: Topic,
@@ -445,12 +444,15 @@ export const DetailExam = async (req: Request, res: Response) => {
       nest: true,
       raw: true,
     });
+
     if (!exam) {
       return res.status(404).json("Bài kiểm tra không tồn tại!");
     }
+
     let { createdAt, updatedAt, ...rest } = exam as any;
     createdAt = changeTime(createdAt);
     updatedAt = changeTime(updatedAt);
+
     return res.json({ ...rest, createdAt, updatedAt });
   } catch (error: any) {
     return res.status(500).json(error.message);

@@ -39,7 +39,7 @@ router.get("/have-attend/", verifyAccessToken, ExamController.ExamHaveDone);
 router.get("/attend/:slug", verifyStudent, ExamController.AttendExam);
 router.post("/submit/:result_id", verifyStudent, ExamController.SubmitExam);
 
-router.get("/detail/:slug", ExamController.DetailExam);
+router.get("/detail/:id", ExamController.DetailExam);
 router.post("/create/", verifyCanExam, ExamController.CreateExam);
 router.put("/update/:exam_id", verifyCanExam, ExamController.UpdateExam);
 router.delete("/delete/:exam_id", verifyCanExam, ExamController.DeleteExam);
