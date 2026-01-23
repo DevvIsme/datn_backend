@@ -75,26 +75,41 @@ export const DetailInfo = async (req: Request, res: Response) => {
 };
 
 export const CreateStudent = async (req: Request, res: Response) => {
-  avatarUpload.single("avatar")(req, res, async (err: any) => {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json({ message: err.message });
-    } else if (err) {
-      return res.status(400).json({ message: err.message });
+  try {
+    const { fullName, email, password, gender, birthday, phone } = req.body;
+
+    // 1. Kiểm tra email trùng
+    const exist = await Student.findOne({ where: { email } });
+    if (exist) {
+      return res.status(409).json({ message: "Email đã tồn tại!" });
     }
-    const avatar = req.file?.filename || "avatar.png";
-    try {
-      const { fullName, email, password, gender, birthday, phone } = req.body;
-      const exist = await Student.findOne({ where: { email } });
-      if (exist) {
-        return res.status(409).json("Email đã tồn tại!");
-      }
-      const hashPassword = await bcryptEncrypt(password);
-      await Student.create({ fullName, email, hashPassword, avatar, gender, birthday, phone  });
-      return res.json("Create new student successfully!");
-    } catch (error: any) {
-      return res.status(500).json(error.message);
+
+    // 2. Xử lý Avatar (Lấy link từ Cloudinary)
+    // Mặc định là avatar.png nếu không up
+    let avatarPath = "avatar.png";
+    if (req.file && req.file.path) {
+      console.log("📸 Avatar mới:", req.file.path);
+      avatarPath = req.file.path; // Link Cloudinary
     }
-  });
+
+    // 3. Hash password và tạo mới
+    const hashPassword = await bcryptEncrypt(password);
+
+    await Student.create({
+      fullName,
+      email,
+      hashPassword,
+      avatar: avatarPath,
+      gender,
+      birthday,
+      phone,
+    });
+
+    return res.json({ message: "Thêm sinh viên thành công!" });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ message: error.message });
+  }
 };
 
 export const ChangeStatus = async (req: Request, res: Response) => {
@@ -437,73 +452,49 @@ export const CreateStudentBulk = async (req: Request, res: Response) => {
 };
 
 export const UpdateStudent = async (req: Request, res: Response) => {
-  // 1. Sử dụng middleware upload giống như khi tạo mới
-  avatarUpload.single("avatar")(req, res, async (err: any) => {
-    if (err) {
-      const statusCode = err instanceof multer.MulterError ? 400 : 500;
-      return res.status(statusCode).json({ message: err.message });
+  try {
+    const id = req.params.student_id;
+    const student = await Student.findByPk(id);
+
+    if (!student) {
+      return res.status(404).json({ message: "Học sinh không tồn tại!" });
     }
 
-    try {
-      const id = req.params.student_id;
-      const student = await Student.findByPk(id);
+    const { fullName, email, password, gender, phone, birthday } = req.body;
 
-      if (!student) {
-        return res.status(404).json({ message: "Học sinh không tồn tại!" });
+    // 1. Kiểm tra email trùng (nếu đổi email)
+    if (email && email !== student.email) {
+      const existEmail = await Student.findOne({ where: { email } });
+      if (existEmail) {
+        return res.status(409).json({ message: "Email này đã được sử dụng!" });
       }
-
-      const { fullName, email, password, gender, phone, birthday } = req.body;
-
-      // 2. Kiểm tra nếu đổi email thì email mới có bị trùng không
-      if (email && email !== student.email) {
-        const existEmail = await Student.findOne({ where: { email } });
-        if (existEmail) {
-          return res
-            .status(409)
-            .json({ message: "Email này đã được sử dụng bởi học sinh khác!" });
-        }
-      }
-
-      // 3. Chuẩn bị dữ liệu cập nhật
-      let updateData: any = {
-        fullName,
-        email,
-        gender,
-        phone,
-        birthday, // Sequelize tự convert string 'YYYY-MM-DD' sang Date
-      };
-
-      // 4. Nếu có nhập mật khẩu mới thì hash và update
-      if (password && password.trim() !== "") {
-        updateData.hashPassword = await bcryptEncrypt(password);
-      }
-
-      // 5. Xử lý Avatar: Nếu có file mới thì update và xóa file cũ
-      if (req.file?.filename) {
-        updateData.avatar = req.file.filename;
-
-        // Logic xóa ảnh cũ (trừ ảnh mặc định)
-        if (student.avatar && student.avatar !== "avatar.png") {
-          const oldAvatarPath = path.join(
-            __dirname,
-            "../../public/avatars",
-            student.avatar
-          );
-          try {
-            await fs.access(oldAvatarPath);
-            await fs.unlink(oldAvatarPath);
-          } catch (e) {
-            console.log("Không tìm thấy ảnh cũ hoặc lỗi xóa ảnh:", e);
-          }
-        }
-      }
-
-      // 6. Thực hiện update vào DB
-      await student.update(updateData);
-
-      return res.json({ message: "Cập nhật thông tin học sinh thành công!" });
-    } catch (error: any) {
-      return res.status(500).json({ message: "Lỗi Server: " + error.message });
     }
-  });
+
+    // 2. Chuẩn bị dữ liệu update
+    let updateData: any = {
+      fullName,
+      email,
+      gender,
+      phone,
+      birthday,
+    };
+
+    // 3. Nếu có password mới thì hash
+    if (password && password.trim() !== "") {
+      updateData.hashPassword = await bcryptEncrypt(password);
+    }
+
+    // 4. Xử lý Avatar (Cloudinary)
+    if (req.file && req.file.path) {
+      console.log("📸 Cập nhật Avatar Admin:", req.file.path);
+      updateData.avatar = req.file.path; // Lưu link Cloudinary mới
+    }
+
+    // 5. Update DB
+    await student.update(updateData);
+
+    return res.json({ message: "Cập nhật thông tin thành công!" });
+  } catch (error: any) {
+    return res.status(500).json({ message: "Lỗi Server: " + error.message });
+  }
 };
