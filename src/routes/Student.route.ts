@@ -15,7 +15,12 @@ router.get("/forgot_password/:reset/", Student.VerifyResetstring);
 
 router.get("/list/", verifyAdmin, Student.GetListStudent);
 router.get("/detail/:id", verifyCanStudent, Student.DetailInfo);
-router.post("/create/", verifyCanStudent, Student.CreateStudent);
+router.post(
+  "/create/",
+  verifyCanStudent,
+  uploadCloud.single("avatar"),
+  Student.CreateStudent
+);
 router.post("/create/bulk/", verifyCanStudent, Student.CreateStudentBulk);
 router.put(
   "/change_status/:student_id",
@@ -27,7 +32,12 @@ router.delete("/delete/:student_id", verifyCanStudent, Student.DeleteStudent);
 router.get("/my_info", verifyStudent, Student.MyInfo);
 
 router.put("/my_info/change_password/", verifyStudent, Student.ChangePassword);
-router.put("/update/:student_id", verifyAdmin, Student.UpdateStudent);
+router.put(
+  "/update/:student_id",
+  verifyAdmin,
+  uploadCloud.single("avatar"),
+  Student.UpdateStudent
+);
 router.put(
   "/my_info/update",
   verifyStudent, // Xác thực user trước
