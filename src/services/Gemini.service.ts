@@ -61,20 +61,30 @@ export const ExplainQuestion = async (questionData: any) => {
   }
 };
 
-// === HÀM 2: TẠO ĐỀ THI (QUIZ) ===
 export const GenerateQuiz = async (
   originalQuestion: IQuestionInput,
   quantity: number = 3
 ) => {
   try {
+    // 1. Prompt rõ ràng hơn, ép buộc cấu trúc JSON
     const prompt = `
-      Bạn là trợ lý soạn đề thi. Tạo ${quantity} câu hỏi biến thể dựa trên:
-      - Nội dung: "${originalQuestion.name}"
+      Bạn là trợ lý soạn đề thi chuyên nghiệp. 
+      Nhiệm vụ: Tạo ${quantity} câu hỏi biến thể (giữ nguyên độ khó, chủ đề, kiến thức).
+      
+      DỮ LIỆU GỐC:
+      - Câu hỏi: "${originalQuestion.name}"
       - Lựa chọn: ${JSON.stringify(originalQuestion.choice)}
-      - Đáp án: ${JSON.stringify(originalQuestion.correctAns)}
-      - Loại: ${originalQuestion.type}
+      - Đáp án đúng: ${JSON.stringify(originalQuestion.correctAns)}
+      - Loại câu hỏi: ${originalQuestion.type}
 
-      YÊU CẦU: Giữ nguyên độ khó, chủ đề. Trả về mảng JSON.
+      YÊU CẦU QUAN TRỌNG VỀ OUTPUT:
+      Chỉ trả về một mảng JSON (Array of Objects), trong đó mỗi object MỐT phải có đúng các trường sau:
+      1. "name": (string) Nội dung câu hỏi mới.
+      2. "choice": (array string) Danh sách các lựa chọn (BẮT BUỘC PHẢI CÓ).
+      3. "correctAns": (array string) Danh sách đáp án đúng (lấy từ tập choice).
+      4. "type": (string) Giữ nguyên là "${originalQuestion.type}".
+
+      Tuyệt đối không thêm Markdown (như \`\`\`json), chỉ trả về JSON thuần.
     `;
 
     const response = await genAI.models.generateContent({
@@ -86,12 +96,27 @@ export const GenerateQuiz = async (
         },
       ],
       config: {
-        responseMimeType: "application/json",
+        responseMimeType: "application/json", // Ép trả về JSON
       },
     });
 
     const text = response.text;
-    return text ? JSON.parse(text) : null;
+
+    // 2. Sử dụng hàm cleanAndParseJSON (bạn đã có ở dưới) để an toàn hơn
+    // Thay vì JSON.parse(text) trực tiếp dễ gây lỗi
+    const parsedData = cleanAndParseJSON(text);
+
+    // 3. (Quan trọng) Validate dữ liệu trước khi trả về
+    // Đảm bảo mọi câu hỏi đều có trường 'choice'
+    if (Array.isArray(parsedData)) {
+      return parsedData.map((q) => ({
+        ...q,
+        choice: q.choice || [], // Fallback nếu thiếu
+        correctAns: q.correctAns || [], // Fallback nếu thiếu
+      }));
+    }
+
+    return parsedData;
   } catch (error) {
     console.error("Generate Quiz Error:", error);
     return null;
